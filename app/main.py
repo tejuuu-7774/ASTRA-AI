@@ -1,11 +1,9 @@
 from app.config import *
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 from app.ingest import ingest_text
 from app.rag import query_rag
-from fastapi import UploadFile, File
-import shutil
-from app.pdf_utils import extract_text_from_pdf
+from app.pdf_utils import extract_text_from_pdf_bytes
 
 app = FastAPI()
 
@@ -16,34 +14,35 @@ class QuestionInput(BaseModel):
     question: str
 
 
-# Check if system is alive -> just a test route i added
+# Check if system is alive
 @app.get("/")
 def home():
     return {"message": "AstraAI is now running"}
 
-# Feeds data into memory
+
+# Feeds raw text into memory
 @app.post("/ingest")
 def ingest(data: TextInput):
     chunks = ingest_text(data.text)
     return {"chunks_created": chunks}
 
-# can ask questions from that memory
+
+# Ask questions from stored knowledge
 @app.post("/ask")
 def ask(data: QuestionInput):
     result = query_rag(data.question)
     return result
 
-# This endpoint will accept PDF → read → store → ready for questions
+
+# 🔥 UPDATED PDF UPLOAD (NO FILE SAVING)
 @app.post("/upload_pdf")
-def upload_pdf(file: UploadFile = File(...)):
-    file_path = f"temp_{file.filename}"
+async def upload_pdf(file: UploadFile = File(...)):
 
-    # Save uploaded file
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Read file directly into memory
+    pdf_bytes = await file.read()
 
-    # Extract text
-    text = extract_text_from_pdf(file_path)
+    # Extract text from memory
+    text = extract_text_from_pdf_bytes(pdf_bytes)
 
     # Ingest into vector DB
     chunks = ingest_text(text)
