@@ -49,16 +49,19 @@ def is_sensitive_output(text: str):
 def query_rag(question: str):
 
     # Blocks unsafe queries BEFORE anything
-    if is_blocked_query(question):
-        return {
-            "answer": "This information is restricted.",
-            "sources": [],
-            "confidence": "LOW",
-            "intent_used": "Blocked sensitive query"
-        }
+    def sanitize_question(question: str):
+        blocked_words = ["password", "secret", "key"]
+
+        clean_question = question
+
+        for word in blocked_words:
+            clean_question = clean_question.replace(word, "")
+
+        return clean_question.strip()
 
     # Get refined intent
-    intent = plan_question(question)
+    clean_question = sanitize_question(question)
+    intent = plan_question(clean_question if clean_question else question)
 
     # Embeddings + DB
     embeddings = HuggingFaceEmbeddings(
