@@ -27,6 +27,7 @@ def home():
 @app.post("/upload_pdf")
 async def upload_pdf(file: UploadFile = File(...)):
     global vector_db
+    vector_db = None
 
     pdf_bytes = await file.read()
     text = extract_text_from_pdf_bytes(pdf_bytes)
