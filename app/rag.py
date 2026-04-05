@@ -1,7 +1,6 @@
-from langchain_community.vectorstores import Chroma
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
-from app.embeddings import get_embeddings
+from app.main import vector_db
 import os
 
 
@@ -41,6 +40,14 @@ def is_sensitive_output(text: str):
 # -----------------------------
 def query_rag(question: str):
 
+    if vector_db is None:
+        return {
+            "answer": "Please upload a PDF first.",
+            "sources": [],
+            "confidence": "LOW",
+            "intent_used": "No DB"
+        }
+
     def sanitize_question(q: str):
         for word in ["password", "secret", "key"]:
             q = q.replace(word, "")
@@ -49,15 +56,7 @@ def query_rag(question: str):
     clean_question = sanitize_question(question)
     intent = plan_question(clean_question if clean_question else question)
 
-    # API embeddings
-    embeddings = get_embeddings()
-
-    db = Chroma(
-        persist_directory="db",
-        embedding_function=embeddings
-    )
-
-    docs = db.similarity_search(intent, k=3)
+    docs = vector_db.similarity_search(intent, k=3)
 
     context = "\n".join([doc.page_content for doc in docs])
     sources = list(set([doc.page_content[:100] for doc in docs]))

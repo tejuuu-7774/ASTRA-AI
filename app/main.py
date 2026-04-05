@@ -1,56 +1,67 @@
 print("🔥 Starting AstraAI backend...")
+
 import os
 from dotenv import load_dotenv
 load_dotenv()
+
 from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
+from langchain_community.vectorstores import Chroma
+from app.embeddings import get_embeddings
 from app.ingest import ingest_text
 from app.rag import query_rag
 from app.pdf_utils import extract_text_from_pdf_bytes
 
 app = FastAPI()
 
+# 🔥 GLOBAL IN-MEMORY DB
+vector_db = None
+
+
 class TextInput(BaseModel):
     text: str
+
 
 class QuestionInput(BaseModel):
     question: str
 
 
-# Check if system is alive
 @app.get("/")
 def home():
     return {"message": "AstraAI is now running"}
 
 
-# Feeds raw text into memory
-@app.post("/ingest")
-def ingest(data: TextInput):
-    chunks = ingest_text(data.text)
-    return {"chunks_created": chunks}
-
-
-# Ask questions from stored knowledge
-@app.post("/ask")
-def ask(data: QuestionInput):
-    result = query_rag(data.question)
-    return result
-
-
-# 🔥 UPDATED PDF UPLOAD (NO FILE SAVING)
 @app.post("/upload_pdf")
 async def upload_pdf(file: UploadFile = File(...)):
 
-    # Read file directly into memory
-    pdf_bytes = await file.read()
+    global vector_db
 
-    # Extract text from memory
+    pdf_bytes = await file.read()
     text = extract_text_from_pdf_bytes(pdf_bytes)
 
-    # Ingest into vector DB
     chunks = ingest_text(text)
+
+    vector_db = Chroma.from_texts(
+        texts=chunks,
+        embedding=get_embeddings()
+    )
 
     return {
         "message": "PDF processed successfully",
-        "chunks_created": chunks
+        "chunks_created": len(chunks)
     }
+
+
+@app.post("/ask")
+def ask(data: QuestionInput):
+
+    global vector_db
+
+    if vector_db is None:
+        return {
+            "answer": "Please upload a PDF first.",
+            "sources": [],
+            "confidence": "LOW"
+        }
+
+    return query_rag(data.question)

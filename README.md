@@ -45,7 +45,7 @@ Instead of guessing, it:
 **AI / RAG**
 
 * LangChain
-* ChromaDB
+* ChromaDB (in-memory vector store)
 * HuggingFace API (embeddings)
 * Groq (LLaMA 3.1)
 
@@ -60,7 +60,7 @@ Instead of guessing, it:
 
 1. Upload PDF
 2. Extract and split text into chunks
-3. Generate embeddings and store in ChromaDB
+3. Generate embeddings and store in an in-memory ChromaDB vector store
 
 When asking a question:
 
@@ -165,6 +165,7 @@ streamlit run ui.py
 * No authentication
 * No persistent memory
 * No streaming responses
+* Data is stored in-memory; users must re-upload PDFs after server restarts
 
 ---
 
