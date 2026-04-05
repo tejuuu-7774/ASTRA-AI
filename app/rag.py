@@ -3,6 +3,9 @@ from langchain_core.messages import HumanMessage
 import os
 
 
+# -----------------------------
+# Planner
+# -----------------------------
 def plan_question(question: str):
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
@@ -10,8 +13,8 @@ def plan_question(question: str):
     )
 
     prompt = f"""
-    Convert the question into a SHORT search query (5-8 words max).
-    No explanation. Only keywords.
+    Convert the question into a precise search query.
+    Keep important keywords. Do not remove key terms.
 
     Question: {question}
     """
@@ -23,11 +26,17 @@ def plan_question(question: str):
     return intent
 
 
+# -----------------------------
+# Security
+# -----------------------------
 def is_sensitive_output(text: str):
     sensitive_words = ["password", "deeplearn2026"]
     return any(word in text.lower() for word in sensitive_words)
 
 
+# -----------------------------
+# Main RAG
+# -----------------------------
 def query_rag(question: str, vector_db):
 
     if vector_db is None:
@@ -46,8 +55,8 @@ def query_rag(question: str, vector_db):
     clean_question = sanitize_question(question)
     intent = plan_question(clean_question if clean_question else question)
 
-    # Reduced retrieval
-    docs = vector_db.similarity_search(intent, k=2)
+    # Better retrieval
+    docs = vector_db.similarity_search(intent, k=3)
 
     if not docs:
         return {
@@ -57,8 +66,14 @@ def query_rag(question: str, vector_db):
             "intent_used": intent
         }
 
-    # Limit context size (CRITICAL FIX)
-    context = "\n".join([doc.page_content[:300] for doc in docs])
+    # Dynamic context control (CRITICAL FIX)
+    MAX_CONTEXT_CHARS = 1200
+
+    context = ""
+    for doc in docs:
+        if len(context) + len(doc.page_content) > MAX_CONTEXT_CHARS:
+            break
+        context += doc.page_content + "\n"
 
     sources = list(set([doc.page_content[:100] for doc in docs]))
 
