@@ -3,7 +3,7 @@ from langchain_text_splitters import CharacterTextSplitter
 def ingest_text(text: str):
 
     splitter = CharacterTextSplitter(
-        chunk_size=500,
+        chunk_size=300,
         chunk_overlap=50
     )
 

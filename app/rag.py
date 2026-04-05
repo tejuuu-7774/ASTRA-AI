@@ -46,9 +46,20 @@ def query_rag(question: str, vector_db):
     clean_question = sanitize_question(question)
     intent = plan_question(clean_question if clean_question else question)
 
-    docs = vector_db.similarity_search(intent, k=3)
+    # Reduced retrieval
+    docs = vector_db.similarity_search(intent, k=2)
 
-    context = "\n".join([doc.page_content for doc in docs])
+    if not docs:
+        return {
+            "answer": "Not available in the document.",
+            "sources": [],
+            "confidence": "LOW",
+            "intent_used": intent
+        }
+
+    # Limit context size (CRITICAL FIX)
+    context = "\n".join([doc.page_content[:300] for doc in docs])
+
     sources = list(set([doc.page_content[:100] for doc in docs]))
 
     llm = ChatGroq(
