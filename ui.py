@@ -155,7 +155,7 @@ if ask_button:
                         with col_i2:
                             st.markdown("### Intent")
 
-                        st.code(data["intent_used"])
+                        st.code(data.get("intent_used", "N/A"))
 
                     # -----------------------------
                     # Sources (WITH ICON)
