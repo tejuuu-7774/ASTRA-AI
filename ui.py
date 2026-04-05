@@ -1,7 +1,8 @@
 import streamlit as st
 import requests
 
-BACKEND_URL = "http://127.0.0.1:8000"
+# BACKEND_URL = "http://127.0.0.1:8000"
+BACKEND_URL = "https://astra-ai-q72g.onrender.com"
 
 
 # -----------------------------
