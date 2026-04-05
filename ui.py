@@ -1,6 +1,9 @@
 import streamlit as st
 import requests
 
+BACKEND_URL = "http://127.0.0.1:8000"
+
+
 # -----------------------------
 # 1. Page Configuration
 # -----------------------------
@@ -52,7 +55,7 @@ if uploaded_file is not None and not st.session_state.pdf_uploaded:
     with st.spinner("Processing PDF..."):
         try:
             response = requests.post(
-                "http://127.0.0.1:8000/upload_pdf",
+                f"{BACKEND_URL}/upload_pdf",
                 files={"file": uploaded_file}
             )
 
@@ -103,7 +106,7 @@ if ask_button:
         with st.status("Agent is thinking...", expanded=True) as status:
             try:
                 response = requests.post(
-                    "http://127.0.0.1:8000/ask",
+                    f"{BACKEND_URL}/ask",
                     json={"question": question},
                     timeout=30
                 )
@@ -173,4 +176,4 @@ if ask_button:
 
             except requests.exceptions.ConnectionError:
                 status.update(label="Connection Failed", state="error")
-                st.error("Could not connect to backend at http://127.0.0.1:8000")
+                st.error(f"Could not connect to backend at {BACKEND_URL}")
