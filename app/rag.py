@@ -13,8 +13,8 @@ def plan_question(question: str):
     )
 
     prompt = f"""
-    Convert the question into a precise search query.
-    Keep important keywords. Do not remove key terms.
+    Convert the question into a short search query.
+    Keep important keywords. Do not remove meaning.
 
     Question: {question}
     """
@@ -53,10 +53,15 @@ def query_rag(question: str, vector_db):
         return q.strip()
 
     clean_question = sanitize_question(question)
+
+    # planner + original query
     intent = plan_question(clean_question if clean_question else question)
 
-    # Better retrieval
-    docs = vector_db.similarity_search(intent, k=3)
+    # dual retrieval 
+    docs_query = vector_db.similarity_search(question, k=3)
+    docs_intent = vector_db.similarity_search(intent, k=3)
+
+    docs = docs_query + docs_intent
 
     if not docs:
         return {
@@ -66,16 +71,25 @@ def query_rag(question: str, vector_db):
             "intent_used": intent
         }
 
-    # Dynamic context control (CRITICAL FIX)
+    # removes duplicates
+    unique_docs = []
+    seen = set()
+
+    for doc in docs:
+        if doc.page_content not in seen:
+            unique_docs.append(doc)
+            seen.add(doc.page_content)
+
+    # context control (prevents 413 error)
     MAX_CONTEXT_CHARS = 1200
 
     context = ""
-    for doc in docs:
+    for doc in unique_docs:
         if len(context) + len(doc.page_content) > MAX_CONTEXT_CHARS:
             break
         context += doc.page_content + "\n"
 
-    sources = list(set([doc.page_content[:100] for doc in docs]))
+    sources = list(set([doc.page_content[:100] for doc in unique_docs]))
 
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
