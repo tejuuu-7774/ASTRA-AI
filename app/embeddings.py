@@ -3,6 +3,6 @@ import os
 
 def get_embeddings():
     return HuggingFaceEndpointEmbeddings(
-        huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"),
-        model="sentence-transformers/all-MiniLM-L6-v2"
+        model="sentence-transformers/all-MiniLM-L6-v2",
+        huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN")
     )

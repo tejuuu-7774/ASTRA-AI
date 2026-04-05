@@ -2,12 +2,12 @@ import shutil
 import os
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from app.embeddings import get_embeddings
 
 
 def ingest_text(text: str):
 
-    # Clear old DB (fresh start)
+    # Clear old DB
     if os.path.exists("db"):
         shutil.rmtree("db")
 
@@ -18,14 +18,12 @@ def ingest_text(text: str):
 
     chunks = splitter.split_text(text)
 
-    # LOCAL embeddings (stable on Render)
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+    # API embeddings (lightweight)
+    embeddings = get_embeddings()
 
     db = Chroma.from_texts(
-        chunks,
-        embeddings,
+        texts=chunks,
+        embedding=embeddings,
         persist_directory="db"
     )
 
