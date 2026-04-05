@@ -6,20 +6,13 @@ load_dotenv()
 
 from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
-from langchain_community.vectorstores import Chroma
-from app.embeddings import get_embeddings
 from app.ingest import ingest_text
 from app.rag import query_rag
 from app.pdf_utils import extract_text_from_pdf_bytes
 
 app = FastAPI()
 
-# 🔥 GLOBAL IN-MEMORY DB
 vector_db = None
-
-
-class TextInput(BaseModel):
-    text: str
 
 
 class QuestionInput(BaseModel):
@@ -33,28 +26,21 @@ def home():
 
 @app.post("/upload_pdf")
 async def upload_pdf(file: UploadFile = File(...)):
-
     global vector_db
 
     pdf_bytes = await file.read()
     text = extract_text_from_pdf_bytes(pdf_bytes)
 
-    chunks = ingest_text(text)
-
-    vector_db = Chroma.from_texts(
-        texts=chunks,
-        embedding=get_embeddings()
-    )
+    vector_db, chunk_count = ingest_text(text)
 
     return {
         "message": "PDF processed successfully",
-        "chunks_created": len(chunks)
+        "chunks_created": chunk_count
     }
 
 
 @app.post("/ask")
 def ask(data: QuestionInput):
-
     global vector_db
 
     if vector_db is None:

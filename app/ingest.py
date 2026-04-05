@@ -1,12 +1,25 @@
-from langchain_text_splitters import CharacterTextSplitter
+import os
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from app.embeddings import get_embeddings
+
 
 def ingest_text(text: str):
 
-    splitter = CharacterTextSplitter(
+    # Better chunking (REAL FIX)
+    splitter = RecursiveCharacterTextSplitter(
         chunk_size=800,
-        chunk_overlap=50
+        chunk_overlap=150,
+        separators=["\n\n", "\n", ".", " "]
     )
 
     chunks = splitter.split_text(text)
 
-    return chunks
+    embeddings = get_embeddings()
+
+    db = Chroma.from_texts(
+        texts=chunks,
+        embedding=embeddings
+    )
+
+    return db, len(chunks)
