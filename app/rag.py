@@ -4,29 +4,6 @@ import os
 
 
 # -----------------------------
-# Planner
-# -----------------------------
-def plan_question(question: str):
-    llm = ChatGroq(
-        model="llama-3.1-8b-instant",
-        api_key=os.getenv("GROQ_API_KEY")
-    )
-
-    prompt = f"""
-    Convert the question into a short search query.
-    Keep important keywords. Do not remove meaning.
-
-    Question: {question}
-    """
-
-    response = llm.invoke([HumanMessage(content=prompt)])
-
-    intent = response.content.strip()
-    intent = intent.replace('"', '').replace("'", "")
-    return intent
-
-
-# -----------------------------
 # Security
 # -----------------------------
 def is_sensitive_output(text: str):
@@ -47,58 +24,46 @@ def query_rag(question: str, vector_db):
             "intent_used": "No DB"
         }
 
-    def sanitize_question(q: str):
-        for word in ["password", "secret", "key"]:
-            q = q.replace(word, "")
-        return q.strip()
-
-    clean_question = sanitize_question(question)
-
-    # planner + original query
-    intent = plan_question(clean_question if clean_question else question)
-
-    # dual retrieval 
-    docs_query = vector_db.similarity_search(question, k=3)
-    docs_intent = vector_db.similarity_search(intent, k=3)
-
-    docs = docs_query + docs_intent
+    # SIMPLE + STRONG RETRIEVAL (NO PLANNER)
+    docs = vector_db.similarity_search(question, k=5)
 
     if not docs:
         return {
             "answer": "Not available in the document.",
             "sources": [],
             "confidence": "LOW",
-            "intent_used": intent
+            "intent_used": "No Results"
         }
 
-    # removes duplicates
-    unique_docs = []
-    seen = set()
-
-    for doc in docs:
-        if doc.page_content not in seen:
-            unique_docs.append(doc)
-            seen.add(doc.page_content)
-
-    # context control (prevents 413 error)
-    MAX_CONTEXT_CHARS = 1200
+    # CONTROL CONTEXT (prevents token error)
+    MAX_CONTEXT_CHARS = 1800
 
     context = ""
-    for doc in unique_docs:
+    used_docs = []
+
+    for doc in docs:
         if len(context) + len(doc.page_content) > MAX_CONTEXT_CHARS:
             break
         context += doc.page_content + "\n"
+        used_docs.append(doc)
 
-    sources = list(set([doc.page_content[:100] for doc in unique_docs]))
+    sources = list(set([doc.page_content[:100] for doc in used_docs]))
 
+    # LLM
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
         api_key=os.getenv("GROQ_API_KEY")
     )
 
     prompt = f"""
-    Answer ONLY from the context.
-    If not found, say "Not available in the document."
+    You are an intelligent assistant.
+
+    Rules:
+    - Answer using ONLY the provided context
+    - If the answer is clearly present, return it directly
+    - If partially present, summarize relevant information
+    - If not found, say "Not available in the document."
+    - Do NOT guess or add external knowledge
 
     Context:
     {context}
@@ -133,5 +98,5 @@ def query_rag(question: str, vector_db):
         "answer": answer,
         "sources": sources,
         "confidence": confidence,
-        "intent_used": intent
+        "intent_used": question
     }
