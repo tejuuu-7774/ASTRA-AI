@@ -1,12 +1,8 @@
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
-from app.main import vector_db
 import os
 
 
-# -----------------------------
-# Planner
-# -----------------------------
 def plan_question(question: str):
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
@@ -27,18 +23,12 @@ def plan_question(question: str):
     return intent
 
 
-# -----------------------------
-# Security
-# -----------------------------
 def is_sensitive_output(text: str):
     sensitive_words = ["password", "deeplearn2026"]
     return any(word in text.lower() for word in sensitive_words)
 
 
-# -----------------------------
-# Main RAG
-# -----------------------------
-def query_rag(question: str):
+def query_rag(question: str, vector_db):
 
     if vector_db is None:
         return {
@@ -67,12 +57,8 @@ def query_rag(question: str):
     )
 
     prompt = f"""
-    You are an intelligent AI assistant.
-
-    Rules:
-    - Answer ONLY from the context
-    - If not found, say "Not available in the document"
-    - Do NOT guess
+    Answer ONLY from the context.
+    If not found, say "Not available in the document."
 
     Context:
     {context}
@@ -80,7 +66,6 @@ def query_rag(question: str):
     Question:
     {question}
 
-    Return:
     Answer: ...
     Confidence: HIGH / MEDIUM / LOW
     """

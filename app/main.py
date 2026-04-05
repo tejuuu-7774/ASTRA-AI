@@ -64,4 +64,4 @@ def ask(data: QuestionInput):
             "confidence": "LOW"
         }
 
-    return query_rag(data.question)
+    return query_rag(data.question, vector_db)
