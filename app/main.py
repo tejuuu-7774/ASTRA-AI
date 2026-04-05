@@ -1,4 +1,7 @@
-from app.config import *
+print("🔥 Starting AstraAI backend...")
+import os
+from dotenv import load_dotenv
+load_dotenv()
 from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 from app.ingest import ingest_text
