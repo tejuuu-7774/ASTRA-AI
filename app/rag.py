@@ -15,41 +15,45 @@ def query_rag(question: str, vector_db):
             "intent_used": "No DB"
         }
 
-    # STEP 1: Vector Retrieval (Slightly higher k for better coverage)
+    # 🔹 STEP 1: Vector retrieval (Semantic search)
     docs = vector_db.similarity_search(question, k=8)
 
-    # DEBUGGING CODE
-    print(f"\n🔍 QUERY: {question}")
-    for i, d in enumerate(docs):
-        print(f"Chunk {i}: {d.page_content[:150]}")
-
-    # STEP 2: Keyword Fallback
+    # 🔹 STEP 2: Keyword Boost (SMART + SAFE)
     try:
-        raw_docs = vector_db._collection.get()["documents"]
+        all_docs = vector_db._collection.get()["documents"]
     except:
-        raw_docs = []
+        all_docs = []
 
-    keyword_hits = []
-    question_words = [w.lower() for w in question.split() if len(w) > 2]
-
-    for doc_text in raw_docs:
-        if any(word in doc_text.lower() for word in question_words):
-            keyword_hits.append(doc_text)
+    # Detect if question is about timings/schedules
+    time_queries = ["time", "timing", "schedule", "monday", "friday", "hour", "when", "open"]
+    is_time_request = any(k in question.lower() for k in time_queries)
 
     class Doc:
         def __init__(self, text):
             self.page_content = text
 
-    keyword_docs = [Doc(text) for text in keyword_hits[:3]]
-    unique_docs = []
+    keyword_docs = []
+
+    if is_time_request:
+        count = 0
+        # Specific keywords to find the schedule chunk
+        for t in all_docs:
+            if any(k in t.lower() for k in ["monday", "friday", "timing", "schedule"]):
+                keyword_docs.append(Doc(t))
+                count += 1
+                if count >= 5: # Limit to 5 chunks to avoid overwhelming the LLM
+                    break
+
+    # Merge Vector results + Keyword results and deduplicate
+    combined_docs = []
     seen = set()
 
-    for doc in (docs + keyword_docs):
-        if doc.page_content not in seen:
-            unique_docs.append(doc)
-            seen.add(doc.page_content)
+    for d in (docs + keyword_docs):
+        if d.page_content not in seen:
+            combined_docs.append(d)
+            seen.add(d.page_content)
 
-    if not unique_docs:
+    if not combined_docs:
         return {
             "answer": "Not available in the document.",
             "sources": [],
@@ -57,29 +61,28 @@ def query_rag(question: str, vector_db):
             "intent_used": question
         }
 
-    # STEP 3: Context Building
-    MAX_CONTEXT_CHARS = 2000
+    # 🔹 STEP 3: Build context safely
+    MAX_CONTEXT_CHARS = 2500
     context = ""
     used_docs = []
 
-    for doc in unique_docs:
-        if len(context) + len(doc.page_content) > MAX_CONTEXT_CHARS:
+    for d in combined_docs:
+        if len(context) + len(d.page_content) > MAX_CONTEXT_CHARS:
             break
-        context += doc.page_content + "\n"
-        used_docs.append(doc)
+        context += d.page_content + "\n"
+        used_docs.append(d)
 
-    sources = list(set([doc.page_content[:100] + "..." for doc in used_docs]))
+    sources = list(set([d.page_content[:120] + "..." for d in used_docs]))
 
-    # STEP 4: LLM Answering
+    # 🔹 STEP 4: LLM Generation
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
         api_key=os.getenv("GROQ_API_KEY")
     )
 
     prompt = f"""
-    You are an intelligent assistant.
-    Use ONLY the provided context to answer. 
-    If the answer isn't there, say "Not available in the document."
+    Answer ONLY from the context provided. 
+    If the answer is not in the context, say "Not available in the document."
 
     Context:
     {context}
@@ -94,7 +97,7 @@ def query_rag(question: str, vector_db):
         response = llm.invoke([HumanMessage(content=prompt)])
         answer = response.content.strip()
     except Exception as e:
-        answer = f"Error generating answer: {str(e)}"
+        answer = f"Error: {str(e)}"
 
     if is_sensitive_output(answer):
         return {
@@ -107,6 +110,6 @@ def query_rag(question: str, vector_db):
     return {
         "answer": answer,
         "sources": sources,
-        "confidence": "MEDIUM" if len(sources) > 0 else "LOW",
+        "confidence": "MEDIUM" if sources else "LOW",
         "intent_used": question
     }
