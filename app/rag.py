@@ -7,15 +7,28 @@ import os
 # Security Check
 # -----------------------------
 def is_sensitive_output(text: str):
-    sensitive_words = ["password", "secret", "key"]
+    # Change "key" to specific technical terms to avoid false positives
+    sensitive_words = ["password", "secret_key", "api_key", "private_key"]
     return any(word in text.lower() for word in sensitive_words)
 
+def is_sensitive_query(text: str):
+    # Do the same for the question check
+    sensitive_words = ["password", "wifi password", "secret key", "api key"]
+    return any(word in text.lower() for word in sensitive_words)
 
 # -----------------------------
 # Main RAG Pipeline
 # -----------------------------
 def query_rag(question: str, vector_db):
 
+    if is_sensitive_query(question):
+        return {
+            "answer": "This information cannot be disclosed.",
+            "sources": [],
+            "confidence": "LOW",
+            "intent_used": "Blocked"
+        }
+        
     if vector_db is None:
         return {
             "answer": "Please upload a PDF first.",

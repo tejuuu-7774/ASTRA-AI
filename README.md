@@ -1,91 +1,86 @@
 # AstraAI
 
-AstraAI is a Retrieval-Augmented Generation (RAG) system that answers questions from uploaded PDFs.
-It ensures responses are **strictly based on document context**, avoiding hallucinations.
+AstraAI is a Retrieval-Augmented Generation (RAG) system that answers questions from uploaded PDFs.  
+It ensures responses are **strictly grounded in document context**, eliminating hallucinations.
 
 ---
 
 ## Live Demo
 
-Frontend: https://astra-ai-ui.onrender.com
-Backend: https://astra-ai-q72g.onrender.com
+Frontend: https://astra-ai-ui.onrender.com  
+Backend: https://astra-ai-q72g.onrender.com  
 
 ---
 
 ## Overview
 
-AstraAI improves reliability in AI responses by combining retrieval with generation.
+AstraAI improves reliability in AI systems by combining retrieval with generation.
 
 Instead of guessing, it:
-
-* Retrieves relevant document content
-* Uses it to generate grounded answers
+- Retrieves relevant document content  
+- Generates answers only from that context  
 
 **Core capabilities:**
-
-* Context-based answering
-* Query refinement (agentic planning)
-* Confidence scoring
-* Sensitive data filtering
+- Context-grounded answering  
+- Hybrid retrieval (semantic + keyword fallback)  
+- Confidence scoring  
+- Optional security filtering for sensitive data  
 
 ---
 
 ## Tech Stack
 
 **Frontend**
-
-* Streamlit
-* Requests
+- Streamlit  
+- Requests  
 
 **Backend**
-
-* FastAPI
-* Uvicorn
+- FastAPI  
+- Uvicorn  
 
 **AI / RAG**
-
-* LangChain
-* ChromaDB (in-memory vector store)
-* HuggingFace API (embeddings)
-* Groq (LLaMA 3.1)
+- LangChain  
+- ChromaDB (in-memory vector store)  
+- HuggingFace Inference API (embeddings)  
+- Groq (LLaMA 3.1)  
 
 **Utilities**
-
-* PyPDF
-* Python Dotenv
+- PyMuPDF (robust PDF parsing)  
+- Python Dotenv  
 
 ---
 
 ## How It Works
 
-1. Upload PDF
-2. Extract and split text into chunks
-3. Generate embeddings and store in an in-memory ChromaDB vector store
+1. Upload a PDF  
+2. Extract and split text into chunks  
+3. Generate embeddings and store in an in-memory vector store  
 
-When asking a question:
-
-1. Refine query (planner)
-2. Retrieve relevant chunks
-3. Generate answer from context
-4. Return answer + confidence + sources
+When querying:
+1. Process and refine the question  
+2. Retrieve relevant chunks (semantic + keyword boost)  
+3. Build a controlled context window  
+4. Generate answer using LLM  
+5. Return answer, confidence, and sources  
 
 ---
 
 ## Features
 
-* PDF upload (no file storage)
-* Semantic search with vector DB
-* Context-grounded answers only
-* Confidence levels (HIGH / MEDIUM / LOW)
-* Intent-based query processing
-* Sensitive data protection
-* Fully deployed system
+- PDF upload with in-memory processing (no file storage)  
+- Hybrid retrieval for improved accuracy  
+- Context-only answers (no hallucination)  
+- Confidence classification (HIGH / MEDIUM / LOW)  
+- Source transparency  
+- Optional sensitive data filtering  
+- Fully deployed frontend and backend  
 
 ---
 
 ## Project Structure
 
 ```
+
 ASTRA-AI/
 │
 ├── app/
@@ -99,92 +94,104 @@ ASTRA-AI/
 ├── requirements.txt
 ├── .env
 └── assets/
+
 ```
 
 ---
 
 ## API Endpoints
 
-* GET `/` → Health check
-* POST `/ingest` → Ingest text
-* POST `/upload_pdf` → Upload PDF
-* POST `/ask` → Ask question
+- `GET /` → Health check  
+- `POST /upload_pdf` → Upload and process PDF  
+- `POST /ask` → Query document  
 
 ---
 
 ## Environment Variables
 
 ```
+
 GROQ_API_KEY=your_groq_api_key
 HUGGINGFACEHUB_API_TOKEN=your_huggingface_token
+
 ```
 
 ---
 
 ## Local Setup
 
-Clone repository:
+Clone the repository:
 
 ```
-git clone https://github.com/tejuuu-7774/ASTRA-AI.git
+
+git clone [https://github.com/tejuuu-7774/ASTRA-AI.git](https://github.com/tejuuu-7774/ASTRA-AI.git)
 cd ASTRA-AI
+
 ```
 
 Install dependencies:
 
 ```
+
 pip install -r requirements.txt
+
 ```
 
 Run backend:
 
 ```
+
 uvicorn app.main:app --reload
+
 ```
 
 Run frontend:
 
 ```
+
 streamlit run ui.py
+
 ```
 
 ---
 
-## Key Decisions
+## Key Engineering Decisions
 
-* Used HuggingFace API to reduce memory usage
-* Used Groq for fast inference
-* Optimized for free-tier deployment
-* Processed PDFs in-memory (no storage)
+- Used HuggingFace API to avoid heavy local models and reduce memory usage  
+- Integrated Groq for fast and efficient inference  
+- Implemented hybrid retrieval (semantic + keyword) to improve accuracy on structured queries  
+- Used PyMuPDF for reliable extraction from complex PDF layouts  
+- Designed system to operate within free-tier deployment constraints  
 
 ---
 
 ## Limitations
 
-* Single document at a time
-* No authentication
-* No persistent memory
-* No streaming responses
-* Data is stored in-memory; users must re-upload PDFs after server restarts
+- Supports a single document at a time  
+- No authentication or user sessions  
+- No persistent storage (data resets on restart)  
+- No streaming responses  
 
 ---
 
 ## Future Improvements
 
-* Multi-document support
-* User sessions
-* Better UI/UX
-* Streaming responses
-* Authentication
+- Multi-document indexing  
+- User-based session memory  
+- Streaming responses  
+- Authentication and access control  
+- Enhanced UI/UX  
 
 ---
 
 ## Author
 
-Tejaswini Palwai
+Tejaswini Palwai  
 
 ---
 
 ## Note
-AstraAI focuses on **accuracy over creativity**.
-It is built to answer only what it knows—and say nothing when it doesn’t.
+
+AstraAI prioritizes **accuracy over creativity**.  
+It answers only what exists in the document—and refuses to guess.
+
