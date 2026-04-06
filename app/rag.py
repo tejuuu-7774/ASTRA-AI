@@ -16,7 +16,12 @@ def query_rag(question: str, vector_db):
         }
 
     # STEP 1: Vector Retrieval (Slightly higher k for better coverage)
-    docs = vector_db.similarity_search(question, k=6)
+    docs = vector_db.similarity_search(question, k=8)
+
+    # DEBUGGING CODE
+    print(f"\n🔍 QUERY: {question}")
+    for i, d in enumerate(docs):
+        print(f"Chunk {i}: {d.page_content[:150]}")
 
     # STEP 2: Keyword Fallback
     try:

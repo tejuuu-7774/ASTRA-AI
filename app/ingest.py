@@ -7,7 +7,7 @@ import chromadb # Import the base client
 def ingest_text(text: str):
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=800,
-        chunk_overlap=150,
+        chunk_overlap=200,
         separators=["\n\n", "\n", ".", " "]
     )
     chunks = splitter.split_text(text)
