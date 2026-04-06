@@ -2,20 +2,11 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
 import os
 
-
-# -----------------------------
-# Security
-# -----------------------------
 def is_sensitive_output(text: str):
     sensitive_words = ["password", "secret", "key"]
     return any(word in text.lower() for word in sensitive_words)
 
-
-# -----------------------------
-# Main RAG
-# -----------------------------
 def query_rag(question: str, vector_db):
-
     if vector_db is None:
         return {
             "answer": "Please upload a PDF first.",
@@ -24,10 +15,10 @@ def query_rag(question: str, vector_db):
             "intent_used": "No DB"
         }
 
-    # STEP 1: Vector Retrieval (semantic)
-    docs = vector_db.similarity_search(question, k=5)
+    # STEP 1: Vector Retrieval (Slightly higher k for better coverage)
+    docs = vector_db.similarity_search(question, k=6)
 
-    # STEP 2: Keyword Fallback (general, NOT hardcoded)
+    # STEP 2: Keyword Fallback
     try:
         raw_docs = vector_db._collection.get()["documents"]
     except:
@@ -40,20 +31,15 @@ def query_rag(question: str, vector_db):
         if any(word in doc_text.lower() for word in question_words):
             keyword_hits.append(doc_text)
 
-    # Convert to doc-like objects
     class Doc:
         def __init__(self, text):
             self.page_content = text
 
     keyword_docs = [Doc(text) for text in keyword_hits[:3]]
-
-    #  STEP 3: Combine + Deduplicate
-    all_docs = docs + keyword_docs
-
-    seen = set()
     unique_docs = []
+    seen = set()
 
-    for doc in all_docs:
+    for doc in (docs + keyword_docs):
         if doc.page_content not in seen:
             unique_docs.append(doc)
             seen.add(doc.page_content)
@@ -66,9 +52,8 @@ def query_rag(question: str, vector_db):
             "intent_used": question
         }
 
-    # STEP 4: Controlled Context (prevents 413 error)
-    MAX_CONTEXT_CHARS = 1800
-
+    # STEP 3: Context Building
+    MAX_CONTEXT_CHARS = 2000
     context = ""
     used_docs = []
 
@@ -78,9 +63,9 @@ def query_rag(question: str, vector_db):
         context += doc.page_content + "\n"
         used_docs.append(doc)
 
-    sources = list(set([doc.page_content[:100] for doc in used_docs]))
+    sources = list(set([doc.page_content[:100] + "..." for doc in used_docs]))
 
-    # STEP 5: LLM Answering
+    # STEP 4: LLM Answering
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
         api_key=os.getenv("GROQ_API_KEY")
@@ -88,13 +73,8 @@ def query_rag(question: str, vector_db):
 
     prompt = f"""
     You are an intelligent assistant.
-
-    Rules:
-    - Use ONLY the provided context
-    - Extract the answer clearly if present
-    - If partially present, summarize relevant info
-    - If not found, say "Not available in the document"
-    - Do NOT guess or add external knowledge
+    Use ONLY the provided context to answer. 
+    If the answer isn't there, say "Not available in the document."
 
     Context:
     {context}
@@ -105,10 +85,12 @@ def query_rag(question: str, vector_db):
     Answer:
     """
 
-    response = llm.invoke([HumanMessage(content=prompt)])
-    answer = response.content.strip()
+    try:
+        response = llm.invoke([HumanMessage(content=prompt)])
+        answer = response.content.strip()
+    except Exception as e:
+        answer = f"Error generating answer: {str(e)}"
 
-    # STEP 6: Safety Check
     if is_sensitive_output(answer):
         return {
             "answer": "This information cannot be disclosed.",
@@ -120,6 +102,6 @@ def query_rag(question: str, vector_db):
     return {
         "answer": answer,
         "sources": sources,
-        "confidence": "MEDIUM",
+        "confidence": "MEDIUM" if len(sources) > 0 else "LOW",
         "intent_used": question
     }
